@@ -1,0 +1,20 @@
+.upload {
+  display: flex;
+  flex-direction: column;
+  height: 150px;
+  border: medium dashed rgba(0,0,0,.125);
+}
+
+.upload .label {
+  margin: auto;
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.upload input[type="file"] {
+  position: absolute;
+  left: 0;
+  opacity: 0;
+  height: 150px;
+}

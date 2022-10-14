@@ -1,0 +1,31 @@
+extends layout
+
+block content
+  .text-center
+    div
+      h1 #{title}
+  if uploadUrl
+    form.mt-4(method="post" action=uploadUrl enctype="multipart/form-data")
+      .mb-3
+        .upload
+          .label
+            #label Drag and drop files here
+            #filenames
+          input.form-control#file(type="file" name="file" multiple onchange="handleChangeUploadFiles(this)")
+      .mb-3
+        input.btn.btn-primary(type="submit" value="Upload")
+  .card.mt-4
+    .card-header
+      if uploadUrl
+        h5 Files
+      else
+        h5 Conatainers
+    .card-body
+      table.table
+        tbody.text-break
+          each file in files
+            tr
+              td
+                a.nav-link(href=file.url)= file.name
+              if file.contentLength != undefined
+                td.text-end #{file.contentLength} Byte

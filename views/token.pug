@@ -1,0 +1,16 @@
+extends layout
+
+block content
+  .text-center
+    div
+      h1 #{title}
+  .card.mt-4
+    .card-header
+      h5 Properties
+    .card-body
+      table.table
+        tbody.text-break
+          each prop in props
+            tr
+              td(style="min-width: 200px")= prop.key
+              td= prop.value

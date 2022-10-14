@@ -1,0 +1,15 @@
+extends layout
+
+block content
+  form(method="post" action=action)
+    .card(style="width: 36rem; margin: 0 auto;")
+      .card-body
+        .card-text
+          .form-floating.mb-3
+            input.form-control#username(type="text" name="username" placeholder="UserName")
+            label(for="username") UserName
+          .form-floating.mb-3
+            input.form-control#password(type="password" name="password" placeholder="Password")
+            label(for="password") Password
+      .card-footer.text-end
+        input.btn.btn-primary(type="submit" value="Login")
