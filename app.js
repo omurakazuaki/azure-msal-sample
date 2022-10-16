@@ -11,6 +11,7 @@ const logger = require('morgan');
 const indexRouter = require('./routes/index');
 const loginRouter = require('./routes/login');
 const filesRouter = require('./routes/files');
+const downloadRouter = require('./routes/download');
 
 const app = express();
 
@@ -44,6 +45,7 @@ const isAuthenticated = async (req, res, next) => {
 app.use('/login', loginRouter);
 app.use('/', isAuthenticated, indexRouter);
 app.use('/files', isAuthenticated, filesRouter);
+app.use('/download', isAuthenticated, downloadRouter);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {

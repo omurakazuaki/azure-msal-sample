@@ -4,6 +4,7 @@ const router = express.Router();
 const msal = require('../msal');
 const { wrap, kv } = require('../utils');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { v4: uuid } = require('uuid');
 
 const errorHandler = (err, req, res, next) => {
   console.error(err);
@@ -58,10 +59,9 @@ class MulterAzureStorage {
     const bsc = createBlobServiceClient(req.session.homeAccountId);
     const cc = bsc.getContainerClient(req.params.container);
     const bc = cc.getBlockBlobClient(file.originalname);
-    bc.uploadStream(file.stream)
+    bc.uploadStream(file.stream, 1024 * 1024 * 8, 5, { tags: { downloadKey: uuid() }})
       .then(res => {
-        file.blobClient = bc;
-        cb(null, res);
+        cb(null, bc);
       })
       .catch(e => {
         cb(e);
@@ -82,8 +82,7 @@ class MulterAzureStorage {
   }
 }
 
-const multer  = require('multer');
-const e = require('express');
+const multer = require('multer');
 const upload = multer({ storage: new MulterAzureStorage() });
 
 router.post('/:container/upload', upload.array('file', 10), wrap(async(req, res, next) => {
@@ -94,25 +93,16 @@ router.post('/:container/upload', upload.array('file', 10), wrap(async(req, res,
   }
 }), errorHandler);
 
-router.get('/:container/:blob(*)/download', wrap(async(req, res, next) => {
-  res.attachment(req.params.blob);
-  const bsc = createBlobServiceClient(req.session.homeAccountId);
-  const cc = bsc.getContainerClient(req.params.container);
-  const bc = cc.getBlockBlobClient(req.params.blob);
-  const downloadResponse = await bc.download();
-  const stream = downloadResponse.readableStreamBody;
-  stream.on('error', next).pipe(res);
-}), errorHandler);
-
 router.get('/:container/:blob(*)', wrap(async(req, res, next) => {
   const bsc = createBlobServiceClient(req.session.homeAccountId);
   const cc = bsc.getContainerClient(req.params.container);
   const bc = cc.getBlockBlobClient(req.params.blob);
   const props = kv(await bc.getProperties(), ['_response']);
+  const downloadKey = (await bc.getTags()).tags.downloadKey;
   res.render('file', {
     props,
     title: req.params.blob,
-    downloadUrl:`/files/${req.params.container}/${req.params.blob}/download`,
+    sharedLink:`/download/${req.params.container}/${downloadKey}`,
     backUrl: `/files/${req.params.container}`
   });
 }), errorHandler);
