@@ -5,7 +5,10 @@ block content
     div
       h1 #{title}
     .mt-4
-      a.btn.btn-outline-primary(href=downloadUrl) Download
+      if downloadLink
+        a.btn.btn-outline-primary(href=downloadLink) Download
+      if sharedLink
+        a.btn.btn-outline-primary(href=sharedLink) Shared Link
   .card.mt-4
     .card-header
       h5 Properties

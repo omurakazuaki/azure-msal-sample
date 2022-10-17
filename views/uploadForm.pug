@@ -1,0 +1,12 @@
+extends layout
+
+block content
+  form(method="post" action=action enctype="multipart/form-data")
+    .card(style="width: 36rem; margin: 0 auto;")
+      .card-body
+        .card-text
+          .form-floating.mb-3
+            input.form-control#file(type="file" name="file" multiple)
+            label(for="password") File
+      .card-footer.text-end
+        input.btn.btn-primary(type="submit" value="Upload")
