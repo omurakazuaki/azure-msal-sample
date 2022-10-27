@@ -21,7 +21,8 @@ html
             .text-end
               a.btn.btn-outline-light(href='/logout') Logout
     if alert
-      .alert.alert-danger= alert
+      each msg in alert
+        .alert.alert-danger= msg
     .container-sm.mt-5
       if backUrl
         nav(aria-label='breadcrumb')

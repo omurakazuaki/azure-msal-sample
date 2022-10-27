@@ -1,7 +1,6 @@
 const express = require('express');
 const createError = require('http-errors');
 const router = express.Router();
-const msal = require('../msal');
 const { wrap, kv } = require('../utils');
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { v4: uuid } = require('uuid');
@@ -11,11 +10,10 @@ const errorHandler = (err, req, res, next) => {
   next(createError(err.statusCode));
 };
 
-const createBlobServiceClient = (homeAccountId) => {
+const createBlobServiceClient = (token) => {
   return new BlobServiceClient(
     `https://${process.env.STORAGE_ACCOUNT_NAME}.blob.core.windows.net`,
     { getToken: async() => {
-      const token = await msal.acquireToken({ homeAccountId });
       return {
         token: token.accessToken,
         expiresOnTimestamp: token.idTokenClaims.exp * 1000
@@ -25,7 +23,7 @@ const createBlobServiceClient = (homeAccountId) => {
 }
 
 router.get('/', wrap(async(req, res, next) => {
-  const bsc = createBlobServiceClient(req.session.homeAccountId);
+  const bsc = createBlobServiceClient(req.user);
   const files = [];
   for await (const container of bsc.listContainers()) {
     files.push({name: container.name, ...container.properties, url: `/files/${container.name}` });
@@ -39,7 +37,7 @@ router.get('/', wrap(async(req, res, next) => {
 }), errorHandler);
 
 router.get('/:container', wrap(async(req, res, next) => {
-  const bsc = createBlobServiceClient(req.session.homeAccountId);
+  const bsc = createBlobServiceClient(req.user);
   const cc = bsc.getContainerClient(req.params.container);
   const files = [];
   for await (const blob of cc.listBlobsFlat()) {
@@ -56,7 +54,7 @@ router.get('/:container', wrap(async(req, res, next) => {
 class MulterAzureStorage {
 
   async _handleFile(req, file, cb) {
-    const bsc = createBlobServiceClient(req.session.homeAccountId);
+    const bsc = createBlobServiceClient(req.user);
     const cc = bsc.getContainerClient(req.params.container);
     const bc = cc.getBlockBlobClient(file.originalname);
     bc.uploadStream(file.stream, 1024 * 1024 * 8, 5, { tags: { downloadKey: uuid() }})
@@ -69,7 +67,7 @@ class MulterAzureStorage {
   }
 
   async _removeFile(req, file, cb) {
-    const bsc = createBlobServiceClient(req.session.homeAccountId);
+    const bsc = createBlobServiceClient(req.user);
     const cc = bsc.getContainerClient(req.params.container);
     const bc = cc.getBlockBlobClient(file.originalname);
     bc.delete()
@@ -94,7 +92,7 @@ router.post('/:container/upload', upload.array('file', 10), wrap(async(req, res,
 }), errorHandler);
 
 router.get('/:container/:blob(*)', wrap(async(req, res, next) => {
-  const bsc = createBlobServiceClient(req.session.homeAccountId);
+  const bsc = createBlobServiceClient(req.user);
   const cc = bsc.getContainerClient(req.params.container);
   const bc = cc.getBlockBlobClient(req.params.blob);
   const props = kv(await bc.getProperties(), ['_response']);

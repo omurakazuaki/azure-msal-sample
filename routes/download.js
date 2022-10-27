@@ -1,7 +1,6 @@
 const express = require('express');
 const createError = require('http-errors');
 const router = express.Router();
-const msal = require('../msal');
 const { wrap, kv } = require('../utils');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
@@ -10,11 +9,10 @@ const errorHandler = (err, req, res, next) => {
   next(createError(err.statusCode));
 };
 
-const createBlobServiceClient = (homeAccountId) => {
+const createBlobServiceClient = (token) => {
   return new BlobServiceClient(
     `https://${process.env.STORAGE_ACCOUNT_NAME}.blob.core.windows.net`,
     { getToken: async() => {
-      const token = await msal.acquireToken({ homeAccountId });
       return {
         token: token.accessToken,
         expiresOnTimestamp: token.idTokenClaims.exp * 1000
@@ -23,16 +21,16 @@ const createBlobServiceClient = (homeAccountId) => {
   );
 }
 
-const getBlockBlobClientByDownloadKey = async(container, downloadKey, homeAccountId) => {
-  const bsc = createBlobServiceClient(homeAccountId);
-  const cc = bsc.getContainerClient(container);
-  const iter = cc.findBlobsByTags(`downloadKey='${downloadKey}'`);
+const getBlockBlobClientByDownloadKey = async(req) => {
+  const bsc = createBlobServiceClient(req.user);
+  const cc = bsc.getContainerClient(req.params.container);
+  const iter = cc.findBlobsByTags(`downloadKey='${req.params.downloadKey}'`);
   const blob = (await iter.next()).value;
   return cc.getBlockBlobClient(blob.name);
 }
 
 router.get('/:container/:downloadKey', wrap(async(req, res, next) => {
-  const bc = await getBlockBlobClientByDownloadKey(req.params.container, req.params.downloadKey, req.session.homeAccountId);
+  const bc = await getBlockBlobClientByDownloadKey(req);
   const props = kv(await bc.getProperties(), ['_response']);
   res.render('file', {
     props,
@@ -42,7 +40,7 @@ router.get('/:container/:downloadKey', wrap(async(req, res, next) => {
 }), errorHandler);
 
 router.get('/:container/:downloadKey/content', wrap(async(req, res, next) => {
-  const bc = await getBlockBlobClientByDownloadKey(req.params.container, req.params.downloadKey, req.session.homeAccountId);
+  const bc = await getBlockBlobClientByDownloadKey(req);
   res.attachment(bc._name);
   const downloadResponse = await bc.download();
   const stream = downloadResponse.readableStreamBody;

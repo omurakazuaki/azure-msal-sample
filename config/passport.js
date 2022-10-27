@@ -1,3 +1,4 @@
+const LocalStrategy = require('passport-local');
 const msal = require('@azure/msal-node');
 
 const msalConfig = {
@@ -19,14 +20,10 @@ const msalConfig = {
 const pca = new msal.PublicClientApplication(msalConfig);
 const msalTokenCache = pca.getTokenCache();
 
-const getAccount = async(homeAccountId) => {
-  return await msalTokenCache.getAccountByHomeId(homeAccountId);
-};
-
 const acquireToken = async({username, password, homeAccountId} = {}) => {
 
   const scopes = ['openid', 'profile', 'email', 'offline_access', 'https://storage.azure.com/.default'];
-  const account = await getAccount(homeAccountId);
+  const account = await msalTokenCache.getAccountByHomeId(homeAccountId);
   if (account) {
     // Acquire Token Silently if an account is present
     const token = await pca.acquireTokenSilent({
@@ -49,7 +46,36 @@ const acquireToken = async({username, password, homeAccountId} = {}) => {
   }
 };
 
-module.exports = {
-  getAccount,
-  acquireToken,
+module.exports = passport => {
+
+  passport.serializeUser((token, done) => {
+    console.log(token)
+    done(null, token.account.homeAccountId);
+  });
+
+  passport.deserializeUser(async(homeAccountId, done) => {
+    try {
+    console.log(homeAccountId)
+      const token = await acquireToken({homeAccountId});
+      done(null, token);
+    } catch(e) {
+      done(e, e.errorMessage);
+    }
+  });
+
+  passport.use(
+    new LocalStrategy({
+      usernameField: 'username',
+      passwordField: 'password',
+    },
+    async (username, password, done) => {
+      try {
+        const token = await acquireToken({username, password});
+        return done(null, token)
+      } catch(e) {
+        return done(null, false, e.errorMessage)
+      }
+    }
+  ));
+
 };
